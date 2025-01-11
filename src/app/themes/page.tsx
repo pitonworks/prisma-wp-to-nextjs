@@ -1,10 +1,12 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { motion as m } from 'framer-motion'
 import Image from 'next/image'
 import Link from 'next/link'
-import { useSearchParams, useRouter } from 'next/navigation'
-import { Metadata } from 'next'
+import { useState, useEffect } from 'react'
+import { FiSearch, FiFilter, FiMaximize2 } from 'react-icons/fi'
+import Header from '@/components/layout/Header'
+import Footer from '@/components/layout/Footer'
 
 interface Theme {
   id: string
@@ -15,6 +17,11 @@ interface Theme {
   image: string
   rating: number
   sales: number
+}
+
+interface ApiResponse {
+  themes: Theme[]
+  error?: string
 }
 
 const categories = [
@@ -34,258 +41,158 @@ const sortOptions = [
   { name: 'Most Popular', value: 'popular' },
 ]
 
-export const metadata: Metadata = {
-  title: 'WordPress Themes',
-  description: 'Browse our collection of premium WordPress themes. Find the perfect theme for your website.',
-  openGraph: {
-    title: 'WordPress Themes | Prisma Themes',
-    description: 'Browse our collection of premium WordPress themes. Find the perfect theme for your website.',
-    images: [
-      {
-        url: '/themes/og-image.jpg',
-        width: 1200,
-        height: 630,
-        alt: 'Prisma Themes Collection',
-      },
-    ],
-  },
-  twitter: {
-    card: 'summary_large_image',
-    title: 'WordPress Themes | Prisma Themes',
-    description: 'Browse our collection of premium WordPress themes. Find the perfect theme for your website.',
-    images: ['/themes/twitter-image.jpg'],
-  },
-}
-
 export default function ThemesPage() {
   const [themes, setThemes] = useState<Theme[]>([])
   const [loading, setLoading] = useState(true)
-  const [selectedCategory, setSelectedCategory] = useState('All')
-  const [sortBy, setSortBy] = useState('newest')
-  const [searchQuery, setSearchQuery] = useState('')
-  
-  const router = useRouter()
-  const searchParams = useSearchParams()
+  const [error, setError] = useState<string | null>(null)
+  const [mounted, setMounted] = useState(false)
 
   useEffect(() => {
-    const category = searchParams.get('category') || 'All'
-    const sort = searchParams.get('sort') || 'newest'
-    const query = searchParams.get('q') || ''
+    setMounted(true)
+  }, [])
 
-    setSelectedCategory(category)
-    setSortBy(sort)
-    setSearchQuery(query)
+  useEffect(() => {
+    if (!mounted) return;
 
-    fetchThemes(category, sort, query)
-  }, [searchParams])
-
-  const fetchThemes = async (category: string, sort: string, query: string) => {
-    try {
-      const params = new URLSearchParams()
-      if (category !== 'All') params.append('category', category)
-      if (sort !== 'newest') params.append('sort', sort)
-      if (query) params.append('q', query)
-
-      const response = await fetch(`/api/themes?${params.toString()}`)
-      if (!response.ok) throw new Error('Failed to fetch themes')
-      const data = await response.json()
-      setThemes(data.themes)
-    } catch (error) {
-      console.error('Error fetching themes:', error)
-    } finally {
-      setLoading(false)
+    const fetchThemes = async () => {
+      try {
+        setLoading(true)
+        setError(null)
+        const response = await fetch('/api/themes')
+        if (!response.ok) throw new Error('Failed to fetch themes')
+        const data = await response.json()
+        setThemes(data.themes)
+      } catch (error) {
+        console.error('Error fetching themes:', error)
+        setError(error instanceof Error ? error.message : 'Failed to fetch themes')
+      } finally {
+        setLoading(false)
+      }
     }
-  }
 
-  const handleCategoryChange = (category: string) => {
-    const params = new URLSearchParams(searchParams)
-    if (category === 'All') {
-      params.delete('category')
-    } else {
-      params.set('category', category)
-    }
-    router.push(`/themes?${params.toString()}`)
-  }
+    fetchThemes()
+  }, [mounted])
 
-  const handleSortChange = (sort: string) => {
-    const params = new URLSearchParams(searchParams)
-    if (sort === 'newest') {
-      params.delete('sort')
-    } else {
-      params.set('sort', sort)
-    }
-    router.push(`/themes?${params.toString()}`)
-  }
-
-  const handleSearch = (e: React.FormEvent) => {
-    e.preventDefault()
-    const params = new URLSearchParams(searchParams)
-    if (!searchQuery) {
-      params.delete('q')
-    } else {
-      params.set('q', searchQuery)
-    }
-    router.push(`/themes?${params.toString()}`)
-  }
-
-  if (loading) {
+  if (!mounted) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
-      </div>
+      <main className="min-h-screen p-4 relative overflow-hidden">
+        <div className="container mx-auto">
+          <div className="bg-white/90 backdrop-blur-lg rounded-3xl shadow-2xl overflow-hidden">
+            <div className="flex justify-center items-center min-h-[400px]">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+            </div>
+          </div>
+        </div>
+      </main>
     )
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 py-12">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">WordPress Themes</h1>
-          <p className="mt-2 text-gray-600">
-            Discover our collection of premium WordPress themes
-          </p>
-        </div>
+    <main className="min-h-screen relative overflow-hidden">
+      {/* Animated Background */}
+      <div className="fixed inset-0 -z-20">
+        <div className="absolute inset-0 bg-gradient-to-br from-blue-600/20 via-purple-600/20 to-pink-600/20 animate-gradient-slow" />
+      </div>
 
-        {/* Search and Filters */}
-        <div className="bg-white shadow rounded-lg p-6 mb-8">
-          <div className="grid grid-cols-1 gap-6 md:grid-cols-4">
-            {/* Search */}
-            <div className="md:col-span-2">
-              <form onSubmit={handleSearch}>
-                <label htmlFor="search" className="sr-only">
-                  Search themes
-                </label>
-                <div className="relative">
+      {/* Main Container */}
+      <div className="container mx-auto p-4">
+        {/* Main Content Box */}
+        <m.div 
+          initial={false}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.8 }}
+          className="bg-white/90 backdrop-blur-lg rounded-3xl shadow-2xl overflow-hidden"
+        >
+          {/* Header */}
+          <Header />
+
+          {/* Themes Content */}
+          <div className="px-8 py-12">
+            <div className="max-w-5xl mx-auto">
+              <h1 className="text-4xl font-bold text-center mb-4 bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+                Website Themes
+              </h1>
+              <p className="text-gray-600 text-center mb-12 max-w-3xl mx-auto">
+                Browse our collection of premium website themes. Each theme is crafted with attention to detail, 
+                optimized for performance, and designed to help your website stand out.
+              </p>
+
+              {/* Search and Filter */}
+              <div className="flex flex-col md:flex-row gap-4 mb-12">
+                <div className="flex-1 relative">
+                  <FiSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
                   <input
                     type="text"
-                    id="search"
-                    name="search"
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
                     placeholder="Search themes..."
+                    className="w-full pl-10 pr-4 py-3 rounded-lg border border-gray-200 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    suppressHydrationWarning
+                    autoComplete="off"
                   />
-                  <button
-                    type="submit"
-                    className="absolute inset-y-0 right-0 flex items-center px-4 text-gray-500 hover:text-gray-700"
-                  >
-                    <svg
-                      className="h-5 w-5"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-                      />
-                    </svg>
-                  </button>
                 </div>
-              </form>
-            </div>
+                <button className="flex items-center gap-2 px-6 py-3 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors">
+                  <FiFilter />
+                  Filter
+                </button>
+              </div>
 
-            {/* Category Filter */}
-            <div>
-              <label htmlFor="category" className="sr-only">
-                Category
-              </label>
-              <select
-                id="category"
-                name="category"
-                value={selectedCategory}
-                onChange={(e) => handleCategoryChange(e.target.value)}
-                className="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-              >
-                {categories.map((category) => (
-                  <option key={category} value={category}>
-                    {category}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            {/* Sort */}
-            <div>
-              <label htmlFor="sort" className="sr-only">
-                Sort by
-              </label>
-              <select
-                id="sort"
-                name="sort"
-                value={sortBy}
-                onChange={(e) => handleSortChange(e.target.value)}
-                className="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-              >
-                {sortOptions.map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.name}
-                  </option>
-                ))}
-              </select>
+              {/* Themes Grid */}
+              {loading ? (
+                <div className="flex justify-center">
+                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+                </div>
+              ) : error ? (
+                <div className="text-center text-red-600">{error}</div>
+              ) : themes.length === 0 ? (
+                <div className="text-center text-gray-600">No themes found</div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  {themes.map((theme) => (
+                    <m.div
+                      key={theme.id}
+                      whileHover={{ y: -5 }}
+                      className="bg-white rounded-xl shadow-lg overflow-hidden group"
+                    >
+                      <div className="relative">
+                        <Image
+                          src={theme.image}
+                          alt={theme.name}
+                          width={400}
+                          height={300}
+                          className="w-full h-48 object-cover"
+                        />
+                        <Link
+                          href={`/themes/${theme.id}`}
+                          className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white"
+                        >
+                          <FiMaximize2 className="w-6 h-6" />
+                        </Link>
+                      </div>
+                      <div className="p-6">
+                        <h3 className="text-xl font-semibold mb-2 text-gray-800">{theme.name}</h3>
+                        <p className="text-gray-600 mb-4 text-sm leading-relaxed">{theme.description}</p>
+                        <div className="flex items-center justify-between">
+                          <span className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+                            ${theme.price}
+                          </span>
+                          <Link
+                            href={`/themes/${theme.id}`}
+                            className="px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg hover:opacity-90 transition-opacity"
+                          >
+                            View Details
+                          </Link>
+                        </div>
+                      </div>
+                    </m.div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
-        </div>
 
-        {/* Themes Grid */}
-        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
-          {themes.map((theme) => (
-            <Link
-              key={theme.id}
-              href={`/themes/${theme.id}`}
-              className="group"
-            >
-              <div className="bg-white shadow rounded-lg overflow-hidden transition-transform duration-200 hover:-translate-y-1">
-                <div className="aspect-w-16 aspect-h-9">
-                  <Image
-                    src={theme.image}
-                    alt={theme.name}
-                    width={600}
-                    height={338}
-                    className="object-cover"
-                  />
-                </div>
-                <div className="p-6">
-                  <h3 className="text-lg font-semibold text-gray-900 group-hover:text-blue-600">
-                    {theme.name}
-                  </h3>
-                  <p className="mt-2 text-sm text-gray-600 line-clamp-2">
-                    {theme.description}
-                  </p>
-                  <div className="mt-4 flex items-center justify-between">
-                    <span className="text-lg font-bold text-gray-900">
-                      ${theme.price}
-                    </span>
-                    <div className="flex items-center space-x-2">
-                      <div className="flex items-center">
-                        <svg
-                          className="h-5 w-5 text-yellow-400"
-                          fill="currentColor"
-                          viewBox="0 0 20 20"
-                        >
-                          <path
-                            fillRule="evenodd"
-                            d="M10 15.585l-7.07 3.714 1.35-7.858L.72 7.012l7.88-1.145L10 0l2.4 5.867 7.88 1.145-5.56 5.429 1.35 7.858z"
-                            clipRule="evenodd"
-                          />
-                        </svg>
-                        <span className="ml-1 text-sm text-gray-600">
-                          {theme.rating}
-                        </span>
-                      </div>
-                      <span className="text-sm text-gray-500">
-                        {theme.sales} sales
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </Link>
-          ))}
-        </div>
+          {/* Footer */}
+          <Footer />
+        </m.div>
       </div>
-    </div>
+    </main>
   )
 } 

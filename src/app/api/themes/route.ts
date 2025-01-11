@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { Prisma } from '@prisma/client'
 
 export async function GET(request: Request) {
   try {
@@ -7,6 +8,9 @@ export async function GET(request: Request) {
     const category = searchParams.get('category')
     const sort = searchParams.get('sort')
     const query = searchParams.get('q')
+    const limit = searchParams.get('limit') ? parseInt(searchParams.get('limit')!) : undefined
+
+    console.log('API Request:', { category, sort, query, limit })
 
     // Build where clause
     const where: any = {}
@@ -15,8 +19,8 @@ export async function GET(request: Request) {
     }
     if (query) {
       where.OR = [
-        { name: { contains: query, mode: 'insensitive' } },
-        { description: { contains: query, mode: 'insensitive' } },
+        { name: { contains: query } },
+        { description: { contains: query } },
       ]
     }
 
@@ -34,9 +38,12 @@ export async function GET(request: Request) {
         break
     }
 
+    console.log('Prisma Query:', { where, orderBy, take: limit })
+
     const themes = await prisma.theme.findMany({
       where,
       orderBy,
+      take: limit,
       select: {
         id: true,
         name: true,
@@ -49,9 +56,39 @@ export async function GET(request: Request) {
       },
     })
 
-    return NextResponse.json({ themes })
+    console.log(`Found ${themes.length} themes`)
+
+    return NextResponse.json({ 
+      themes,
+      success: true 
+    })
   } catch (error) {
-    console.error('Error fetching themes:', error)
-    return new NextResponse('Internal Server Error', { status: 500 })
+    console.error('Detailed error:', error)
+
+    if (error instanceof Prisma.PrismaClientKnownRequestError) {
+      return NextResponse.json({ 
+        error: `Database error: ${error.message}`,
+        code: error.code,
+        success: false
+      }, { 
+        status: 500 
+      })
+    }
+
+    if (error instanceof Prisma.PrismaClientInitializationError) {
+      return NextResponse.json({ 
+        error: 'Database initialization error',
+        success: false
+      }, { 
+        status: 500 
+      })
+    }
+
+    return NextResponse.json({ 
+      error: 'Failed to fetch themes',
+      success: false
+    }, { 
+      status: 500 
+    })
   }
 } 
